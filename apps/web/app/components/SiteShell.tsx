@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BRAND } from "../lib/brand";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { ArrowUpRight, Heart, Menu, X } from "lucide-react";
+import { ArrowUpRight, Github, Heart, Menu, X } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { isLoggedIn } from "../lib/authApi";
 import { backendConfigured } from "../lib/apiUrl";
@@ -68,6 +68,16 @@ export function SiteHeader() {
             <Link href="/about">The science</Link>
           </div>
           <div className="nav-actions">
+            <a
+              className="icon-button"
+              href="https://github.com/himanshu-chauhan-stack/heartlens-ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="HeartLens AI GitHub repository (opens in a new tab)"
+              title="GitHub repository"
+            >
+              <Github size={20} />
+            </a>
             <ThemeToggle />
             <Link className="nav-login" href={logged ? "/dashboard" : "/login"}>
               {logged ? "My reports" : "Sign in"}
