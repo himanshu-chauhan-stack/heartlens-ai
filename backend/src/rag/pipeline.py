@@ -59,7 +59,7 @@ def _extract_pdf(file_bytes: bytes) -> str:
     except Exception as e:
         # Malformed/corrupted PDF is a bad-input error, not a server error.
         raise ValueError(
-            f"Could not read this PDF -- it may be corrupted or password-protected: {e}"
+            "Could not read this PDF -- it may be corrupted or password-protected"
         ) from e
 
 
@@ -77,7 +77,7 @@ def _extract_docx(file_bytes: bytes) -> str:
         return "\n".join(paras)
     except Exception as e:
         raise ValueError(
-            f"Could not read this DOCX file -- it may be corrupted: {e}"
+            "Could not read this DOCX file -- it may be corrupted"
         ) from e
 
 

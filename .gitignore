@@ -133,3 +133,9 @@ apps/web/.next-static/
 
 .vercel
 .env*
+
+# Database and experiment state can be created from any working directory.
+*.db
+*.db-*
+mlruns/
+test_mlruns/

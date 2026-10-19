@@ -17,3 +17,5 @@ backend/mlruns
 backend/test_mlruns
 backend/models/artifacts/shap_background.pkl
 docs/screenshots
+**/mlruns
+**/test_mlruns

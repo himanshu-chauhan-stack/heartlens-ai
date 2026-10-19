@@ -454,7 +454,8 @@ async def init_optional_db():
         logger.info("Accounts/report-history database ready")
     except Exception as e:
         logger.warning(
-            f"Accounts/report-history database unavailable ({e}); /auth and /reports will fail until it is"
+            "Accounts/report-history database unavailable (%s); account routes are unavailable",
+            type(e).__name__,
         )
 
 
@@ -487,7 +488,7 @@ async def health_check():
 @app.get("/model/info", response_model=ModelInfo)
 async def model_info():
     return ModelInfo(
-        model_path=model_metadata.get("path"),
+        model_path=None,
         loaded=model_metadata["loaded"],
         loaded_at=model_metadata.get("loaded_at"),
         version=model_metadata.get("version"),
@@ -550,7 +551,7 @@ async def predict(req: PredictionRequest, request: Request):
         )
 
     except Exception as e:
-        logger.error(f"Prediction failed: {str(e)}", exc_info=True)
+        logger.error("Prediction failed (%s)", type(e).__name__)
         raise HTTPException(status_code=500, detail="Internal prediction error")
 
 
@@ -626,7 +627,7 @@ async def batch_predict(batch: BatchPredictionRequest):
             request_id=request_id,
         )
     except Exception as e:
-        logger.error(f"Batch prediction failed: {str(e)}", exc_info=True)
+        logger.error("Batch prediction failed (%s)", type(e).__name__)
         raise HTTPException(status_code=500, detail="Internal batch prediction error")
 
 

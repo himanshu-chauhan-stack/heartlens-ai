@@ -30,7 +30,7 @@ alembic>=1.13.0
 psycopg[binary]>=3.1.0
 passlib[bcrypt]>=1.7.4
 bcrypt<4.1.0  # passlib 1.7.4's bcrypt self-test breaks on bcrypt>=4.1's stricter 72-byte validation
-python-jose[cryptography]>=3.3.0
+PyJWT==2.15.1
 reportlab>=4.0.0
 pydantic[email]>=2.0.0
 
