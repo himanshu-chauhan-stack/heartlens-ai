@@ -1,0 +1,39 @@
+{
+  "note": "Synthetic reference generated from locally trained development quick artifact. No upstream pre-redesign trained artifact existed.",
+  "request": {
+    "age": 58,
+    "sex": 1,
+    "height": 175,
+    "weight": 85,
+    "ap_hi": 145,
+    "ap_lo": 90,
+    "cholesterol": 2,
+    "gluc": 1,
+    "smoke": 0,
+    "alco": 0,
+    "active": 1
+  },
+  "response": {
+    "contract_version": "2",
+    "source": "model",
+    "model_version": "b532dbf82fe5",
+    "artifact_sha256": "b532dbf82fe525b7093ca68be1f587c15ae735d8724142f811457dbb91ec8ce6",
+    "model_name": "LGBMClassifier",
+    "target": "cardiovascular_disease_presence",
+    "explanation": {
+      "status": "unavailable",
+      "method": null,
+      "output_scale": null,
+      "calibrated": true,
+      "note": "Calibrated probability explanations are unavailable; raw estimator SHAP is not a probability contribution."
+    },
+    "prediction": 1,
+    "probability": 0.8408129323450791,
+    "risk_level": "High",
+    "confidence": 0.8408129323450791,
+    "timestamp": "2026-10-19T01:34:09.690958+00:00",
+    "request_id": "3165733d-51c0-4b8d-94f0-db3fa2055db6",
+    "top_contributors": null,
+    "baseline_probability": null
+  }
+}

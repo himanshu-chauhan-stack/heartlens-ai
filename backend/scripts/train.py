@@ -1,0 +1,332 @@
+"""
+Training script for heart disease prediction models
+"""
+
+import argparse
+import yaml
+from pathlib import Path
+import sys
+import joblib
+import json
+import hashlib
+import platform
+import os
+import subprocess
+import importlib.metadata
+from datetime import datetime, timezone
+
+# Add src to path
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.data.data_loader import DataLoader
+from src.data.data_validator import DataValidator
+from src.features.feature_engineering import FeatureEngineer
+from src.training.trainer import ModelTrainer
+from src.evaluation.metrics import ModelEvaluator
+from src.evaluation.visualizations import ModelVisualizer
+from src.utils.logger import setup_logger
+from src.utils.model_introspection import unwrap_calibrated
+
+
+def source_revision():
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=PROJECT_ROOT,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return os.getenv("SOURCE_COMMIT", "unknown-local-source")
+
+
+def main(args):
+    """Main training function"""
+
+    # Load configuration
+    config_path = Path(args.config)
+    if not config_path.is_absolute():
+        config_path = PROJECT_ROOT / config_path
+    if not config_path.exists():
+        print(f"Error: Config file not found at {config_path}")
+        sys.exit(1)
+
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    # Setup logging
+    logger = setup_logger(config, log_file=str(PROJECT_ROOT / "logs" / "train.log"))
+    logger.info("=" * 60)
+    logger.info("Starting training pipeline...")
+    logger.info(f"Configuration: {config_path}")
+    logger.info("=" * 60)
+
+    try:
+        # Load data
+        logger.info("\n[1/6] Loading data...")
+        data_loader = DataLoader(config)
+        raw_path = Path(config["data"]["raw_path"])
+        if not raw_path.is_absolute():
+            raw_path = PROJECT_ROOT / raw_path
+        df = data_loader.load_data(raw_path)
+        logger.info(f"Loaded dataset with shape: {df.shape}")
+
+        # Validate data
+        if not args.skip_validation:
+            logger.info("\n[2/6] Validating data...")
+            validator = DataValidator(config)
+            is_valid, errors = validator.validate_dataframe(df)
+
+            if not is_valid:
+                logger.error("Data validation failed:")
+                for error in errors:
+                    logger.error(f"  - {error}")
+
+                if args.strict:
+                    logger.error("Exiting due to validation errors (strict mode)")
+                    sys.exit(1)
+                else:
+                    logger.warning("Continuing despite validation errors...")
+            else:
+                logger.info("Data validation passed!")
+
+            # Generate data quality report
+            quality_report = validator.get_data_quality_report(df)
+            report_path = PROJECT_ROOT / "logs" / "data_quality_report.json"
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(report_path, "w") as f:
+                json.dump(quality_report, f, indent=2)
+            logger.info(f"Data quality report saved to {report_path}")
+        else:
+            logger.info("\n[2/6] Skipping data validation...")
+
+        # Feature engineering
+        logger.info("\n[3/6] Engineering features...")
+        feature_engineer = FeatureEngineer(config)
+        X_train, X_test, y_train, y_test = feature_engineer.prepare_features(df)
+        logger.info(f"Training set: {X_train.shape}, Test set: {X_test.shape}")
+        preprocessor = feature_engineer.build_preprocessor()
+
+        # Train models
+        logger.info("\n[4/6] Training models...")
+        trainer = ModelTrainer(config)
+        results = trainer.train_all_models(X_train, y_train, preprocessor)
+
+        logger.info("\nTraining Results (5-fold CV):")
+        for model_name, cv_metrics in results.items():
+            logger.info(
+                f"  {model_name}: ROC-AUC={cv_metrics.get('cv_roc_auc_mean', float('nan')):.4f} "
+                f"F1={cv_metrics.get('cv_f1_mean', float('nan')):.4f} "
+                f"Accuracy={cv_metrics.get('cv_accuracy_mean', float('nan')):.4f}"
+            )
+
+        # Load best model for evaluation
+        best_model_path = PROJECT_ROOT / "models" / "artifacts" / "best_model.pkl"
+        best_model = joblib.load(best_model_path)
+
+        # Evaluate on test set
+        logger.info("\n[5/6] Evaluating on test set...")
+        y_pred = best_model.predict(X_test)
+        y_pred_proba = None
+        if hasattr(best_model, "predict_proba"):
+            y_pred_proba = best_model.predict_proba(X_test)[:, 1]
+
+        evaluator = ModelEvaluator(config)
+        metrics = evaluator.evaluate_model(
+            y_test, y_pred, y_pred_proba, model_name="best_model"
+        )
+
+        # Business-cost metric (false negatives -- missed diagnoses -- cost
+        # more than false positives). Computed here so it's finally put to
+        # use rather than just defined and never called.
+        business_cfg = config.get("training", {}).get("business_cost", {})
+        business_metrics = evaluator.calculate_business_metrics(
+            y_test,
+            y_pred,
+            cost_fp=business_cfg.get("cost_fp", 1.0),
+            cost_fn=business_cfg.get("cost_fn", 10.0),
+        )
+        metrics["business_cost"] = business_metrics
+        logger.info(
+            f"Business cost: total={business_metrics['total_cost']:.1f} "
+            f"avg_per_prediction={business_metrics['avg_cost_per_prediction']:.4f}"
+        )
+
+        # Save metrics
+        metrics_path = PROJECT_ROOT / "logs" / "evaluation" / "best_model_metrics.json"
+        metrics_path.parent.mkdir(parents=True, exist_ok=True)
+        evaluator.save_metrics(metrics, metrics_path)
+
+        # Subgroup fairness/calibration audit -- aggregate metrics can mask
+        # meaningful miscalibration or discrimination gaps in specific
+        # subgroups. Reporting only; does not change training or selection.
+        subgroup_metrics = {}
+        for subgroup_col in ("sex", "age_bucket"):
+            if subgroup_col in X_test.columns:
+                subgroup_metrics[subgroup_col] = evaluator.evaluate_by_subgroup(
+                    y_test, y_pred, y_pred_proba, X_test[subgroup_col], subgroup_col
+                )
+        if subgroup_metrics:
+            subgroup_path = (
+                PROJECT_ROOT / "logs" / "evaluation" / "subgroup_metrics.json"
+            )
+            subgroup_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(subgroup_path, "w") as f:
+                json.dump(subgroup_metrics, f, indent=2)
+            logger.info(f"Subgroup metrics saved to {subgroup_path}")
+
+        # Print summary
+        summary = evaluator.get_performance_summary(metrics)
+        print("\n" + summary)
+
+        # Create visualizations
+        if args.create_plots:
+            logger.info("\n[6/6] Creating visualizations...")
+            visualizer = ModelVisualizer(
+                output_dir=PROJECT_ROOT / "logs" / "visualizations"
+            )
+
+            # best_model may be a CalibratedClassifierCV wrapping the actual
+            # Pipeline (see ModelTrainer.train_all_models) -- unwrap first, or
+            # named_steps/feature_importances_/coef_ below are never found.
+            unwrapped_model = unwrap_calibrated(best_model)
+
+            feature_names = None
+            if (
+                hasattr(unwrapped_model, "named_steps")
+                and "preprocessor" in unwrapped_model.named_steps
+            ):
+                feature_names = list(
+                    unwrapped_model.named_steps["preprocessor"].get_feature_names_out()
+                )
+
+            # Get feature importances if available
+            feature_importances = None
+            if (
+                hasattr(unwrapped_model, "named_steps")
+                and "model" in unwrapped_model.named_steps
+            ):
+                core_model = unwrapped_model.named_steps["model"]
+                if hasattr(core_model, "feature_importances_"):
+                    feature_importances = core_model.feature_importances_
+                elif hasattr(core_model, "coef_"):
+                    feature_importances = abs(core_model.coef_[0])
+            else:
+                if hasattr(unwrapped_model, "feature_importances_"):
+                    feature_importances = unwrapped_model.feature_importances_
+                elif hasattr(unwrapped_model, "coef_"):
+                    feature_importances = abs(unwrapped_model.coef_[0])
+
+            visualizer.create_evaluation_report(
+                y_test,
+                y_pred,
+                y_pred_proba,
+                model_name="best_model",
+                feature_names=(
+                    feature_names if feature_importances is not None else None
+                ),
+                feature_importances=feature_importances,
+            )
+            logger.info("Visualizations created successfully!")
+        else:
+            logger.info("\n[6/6] Skipping visualization creation...")
+
+        # Save training metadata
+        metadata = {
+            "training_date": datetime.now(timezone.utc).isoformat(),
+            "product": "HeartLens AI",
+            "adaptation_author": "Himanshu Chauhan",
+            "target": "cardiovascular_disease_presence",
+            "training_mode": (
+                "development_quick" if "quick" in config_path.name else "full"
+            ),
+            "selected_model": trainer._select_best(results),
+            "artifact_sha256": hashlib.sha256(best_model_path.read_bytes()).hexdigest(),
+            "dataset_sha256": hashlib.sha256(raw_path.read_bytes()).hexdigest(),
+            "config_sha256": hashlib.sha256(config_path.read_bytes()).hexdigest(),
+            "config_path": str(config_path.relative_to(PROJECT_ROOT)),
+            "python_version": platform.python_version(),
+            "source_sha": source_revision(),
+            "training_source_sha256": hashlib.sha256(
+                b"".join(
+                    p.relative_to(PROJECT_ROOT).as_posix().encode() + p.read_bytes()
+                    for p in sorted((PROJECT_ROOT / "src").rglob("*.py"))
+                )
+            ).hexdigest(),
+            "dependencies": {
+                name: importlib.metadata.version(name)
+                for name in [
+                    "numpy",
+                    "pandas",
+                    "scikit-learn",
+                    "lightgbm",
+                    "xgboost",
+                    "shap",
+                    "mlflow",
+                ]
+            },
+            "config": config,
+            "dataset_shape": df.shape,
+            "train_size": X_train.shape[0],
+            "test_size": X_test.shape[0],
+            "models_trained": list(results.keys()),
+            "cv_results": results,
+            "selection_metric": config.get("training", {})
+            .get("model_selection", {})
+            .get("primary_metric", "roc_auc"),
+            "tuning_enabled": config.get("training", {})
+            .get("tuning", {})
+            .get("enabled", False),
+            "calibration_method": (
+                config.get("training", {}).get("calibration", {}).get("method")
+                if config.get("training", {}).get("calibration", {}).get("enabled")
+                else None
+            ),
+            "best_model_metrics": {
+                "accuracy": metrics["accuracy"],
+                "precision": metrics["precision"],
+                "recall": metrics["recall"],
+                "f1_score": metrics["f1_score"],
+                "roc_auc": metrics.get("roc_auc"),
+                "brier_score": metrics.get("brier_score"),
+                "business_cost": metrics.get("business_cost"),
+            },
+        }
+
+        metadata_path = PROJECT_ROOT / "models" / "artifacts" / "training_metadata.json"
+        metadata_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(metadata_path, "w") as f:
+            json.dump(metadata, f, indent=2)
+        logger.info(f"Training metadata saved to {metadata_path}")
+
+        logger.info("\n" + "=" * 60)
+        logger.info("Training pipeline completed successfully!")
+        logger.info("=" * 60)
+
+    except Exception as e:
+        logger.error(f"Training pipeline failed: {e}", exc_info=True)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Train heart disease prediction models"
+    )
+    parser.add_argument(
+        "--config",
+        default=str(PROJECT_ROOT / "config" / "config.yaml"),
+        help="Path to configuration file",
+    )
+    parser.add_argument(
+        "--skip-validation", action="store_true", help="Skip data validation step"
+    )
+    parser.add_argument(
+        "--strict", action="store_true", help="Exit on validation errors"
+    )
+    parser.add_argument(
+        "--create-plots", action="store_true", help="Create visualization plots"
+    )
+
+    args = parser.parse_args()
+    main(args)

@@ -1,0 +1,74 @@
+[
+  {
+    "filename": "heartlens-sample-01.pdf",
+    "label": "Profile 01",
+    "description": "Complete baseline profile",
+    "inputs": {
+      "age": 42,
+      "sex": 0,
+      "height": 163,
+      "weight": 62,
+      "ap_hi": 118,
+      "ap_lo": 76,
+      "cholesterol": 1,
+      "gluc": 1,
+      "smoke": 0,
+      "alco": 0,
+      "active": 1
+    }
+  },
+  {
+    "filename": "heartlens-sample-02.pdf",
+    "label": "Profile 02",
+    "description": "Elevated measurements profile",
+    "inputs": {
+      "age": 58,
+      "sex": 1,
+      "height": 175,
+      "weight": 85,
+      "ap_hi": 145,
+      "ap_lo": 90,
+      "cholesterol": 2,
+      "gluc": 1,
+      "smoke": 0,
+      "alco": 0,
+      "active": 1
+    }
+  },
+  {
+    "filename": "heartlens-sample-03.pdf",
+    "label": "Profile 03",
+    "description": "Lifestyle and category variations",
+    "inputs": {
+      "age": 63,
+      "sex": 1,
+      "height": 170,
+      "weight": 92,
+      "ap_hi": 156,
+      "ap_lo": 96,
+      "cholesterol": 3,
+      "gluc": 2,
+      "smoke": 1,
+      "alco": 1,
+      "active": 0
+    }
+  },
+  {
+    "filename": "heartlens-sample-04.pdf",
+    "label": "Profile 04",
+    "description": "Different adult measurements",
+    "inputs": {
+      "age": 49,
+      "sex": 0,
+      "height": 160,
+      "weight": 68,
+      "ap_hi": 126,
+      "ap_lo": 80,
+      "cholesterol": 1,
+      "gluc": 2,
+      "smoke": 0,
+      "alco": 0,
+      "active": 1
+    }
+  }
+]

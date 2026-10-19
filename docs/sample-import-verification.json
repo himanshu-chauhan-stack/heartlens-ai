@@ -1,0 +1,82 @@
+[
+  {
+    "file": "heartlens-sample-01.pdf",
+    "extracted_values": {
+      "age": 42,
+      "sex": 0,
+      "height": 163,
+      "weight": 62.0,
+      "ap_hi": 118,
+      "ap_lo": 76,
+      "cholesterol": 1,
+      "gluc": 1,
+      "smoke": 0,
+      "alco": 0,
+      "active": 1
+    },
+    "sample_source": "heartlens_synthetic_sample_v1",
+    "model_version": "b532dbf82fe5",
+    "probability": 0.10167434045143024,
+    "risk_level": "Low"
+  },
+  {
+    "file": "heartlens-sample-02.pdf",
+    "extracted_values": {
+      "age": 58,
+      "sex": 1,
+      "height": 175,
+      "weight": 85.0,
+      "ap_hi": 145,
+      "ap_lo": 90,
+      "cholesterol": 2,
+      "gluc": 1,
+      "smoke": 0,
+      "alco": 0,
+      "active": 1
+    },
+    "sample_source": "heartlens_synthetic_sample_v1",
+    "model_version": "b532dbf82fe5",
+    "probability": 0.8408129323450791,
+    "risk_level": "High"
+  },
+  {
+    "file": "heartlens-sample-03.pdf",
+    "extracted_values": {
+      "age": 63,
+      "sex": 1,
+      "height": 170,
+      "weight": 92.0,
+      "ap_hi": 156,
+      "ap_lo": 96,
+      "cholesterol": 3,
+      "gluc": 2,
+      "smoke": 1,
+      "alco": 1,
+      "active": 0
+    },
+    "sample_source": "heartlens_synthetic_sample_v1",
+    "model_version": "b532dbf82fe5",
+    "probability": 0.8224535035693094,
+    "risk_level": "High"
+  },
+  {
+    "file": "heartlens-sample-04.pdf",
+    "extracted_values": {
+      "age": 49,
+      "sex": 0,
+      "height": 160,
+      "weight": 68.0,
+      "ap_hi": 126,
+      "ap_lo": 80,
+      "cholesterol": 1,
+      "gluc": 2,
+      "smoke": 0,
+      "alco": 0,
+      "active": 1
+    },
+    "sample_source": "heartlens_synthetic_sample_v1",
+    "model_version": "b532dbf82fe5",
+    "probability": 0.31551558773661864,
+    "risk_level": "Low"
+  }
+]

@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cardio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cardio}
+      POSTGRES_DB: cardio
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U cardio -d cardio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  api:
+    build:
+      context: ./backend
+      args:
+        QUICK_TRAIN: "1"
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      APP_ENV: development
+      API_KEY: ${API_KEY:-dev-api-key}
+      DATABASE_URL: postgresql+psycopg://cardio:${POSTGRES_PASSWORD:-cardio}@db:5432/cardio
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-local-development-secret-not-for-production}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    depends_on:
+      db: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, curl, -f, http://localhost:8000/health]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+  web:
+    build: ./apps/web
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      API_URL: http://api:8000
+      API_KEY: ${API_KEY:-dev-api-key}
+      APP_ENV: development
+    depends_on:
+      api: {condition: service_healthy}
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: [monitoring]
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+  grafana:
+    image: grafana/grafana:latest
+    profiles: [monitoring]
+    ports: ["127.0.0.1:3001:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-local-change-me}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+volumes:
+  postgres-data:
+  prometheus-data:
+  grafana-storage:

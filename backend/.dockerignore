@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+.env*
+*.db
+*.db-*
+mlruns/
+mlartifacts/
+test_mlruns/
+logs/*
+!logs/.gitkeep
+models/artifacts/*
+!models/artifacts/.gitkeep

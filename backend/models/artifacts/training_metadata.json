@@ -1,0 +1,247 @@
+{
+  "training_date": "2026-10-18T21:34:24.287140",
+  "product": "HeartLens AI",
+  "adaptation_author": "Himanshu Chauhan",
+  "target": "cardiovascular_disease_presence",
+  "training_mode": "development_quick",
+  "selected_model": "LightGBM",
+  "artifact_sha256": "b532dbf82fe525b7093ca68be1f587c15ae735d8724142f811457dbb91ec8ce6",
+  "dataset_sha256": "bdeea79d8f231af1df97bddef9564f3d11f86f1932901d04cbedd7d346138c60",
+  "config_sha256": "7049f41a5a259cbaa982589375a2f7693ca7aa4fd1f9ac7eb383dc6f2b7bf1f6",
+  "config_path": "config\\config.quick.yaml",
+  "python_version": "3.12.14",
+  "source_sha": "1308460473b9f67eeb8fe5513c1540cbad393a8f",
+  "training_source_sha256": "663f846d873287c516dfe4222119c8a22c045875ae765025bdcbf228f38f458c",
+  "dependencies": {
+    "numpy": "2.5.4",
+    "pandas": "3.0.6",
+    "scikit-learn": "1.9.1",
+    "lightgbm": "4.7.0",
+    "xgboost": "3.0.5",
+    "shap": "0.54.1",
+    "mlflow": "3.17.1"
+  },
+  "config": {
+    "project": {
+      "name": "cardiovascular_risk",
+      "version": "0.1.0",
+      "random_seed": 42
+    },
+    "data": {
+      "raw_path": "data/raw/cardio_train.csv",
+      "raw_delimiter": ";",
+      "processed_path": "data/processed/",
+      "test_size": 0.3,
+      "validation_size": 0.2
+    },
+    "preprocessing": {
+      "feature_engineering": {
+        "enabled": true
+      },
+      "numerical_features": [
+        "age",
+        "height",
+        "weight",
+        "bmi",
+        "ap_hi",
+        "ap_lo",
+        "pulse_pressure",
+        "health_risk_score",
+        "bmi_bp_interaction"
+      ],
+      "categorical_features": [
+        "sex",
+        "cholesterol",
+        "gluc",
+        "smoke",
+        "alco",
+        "active",
+        "bp_category",
+        "bmi_category",
+        "age_bucket"
+      ],
+      "imputation_strategy": {
+        "numerical": "median",
+        "categorical": "most_frequent"
+      }
+    },
+    "training": {
+      "n_jobs": 2,
+      "cv_folds": 5,
+      "metrics": [
+        "accuracy",
+        "f1",
+        "roc_auc"
+      ],
+      "candidate_models": [
+        "LogisticRegression",
+        "LightGBM",
+        "XGBoost"
+      ],
+      "stacking_cv_folds": 3,
+      "screening": {
+        "enabled": false,
+        "cv_folds": 3,
+        "margin": 0.01,
+        "reduced_trials": 10
+      },
+      "model_selection": {
+        "primary_metric": "roc_auc",
+        "tie_breaker": "f1",
+        "tie_tolerance": 0.002
+      },
+      "tuning": {
+        "enabled": false,
+        "n_trials": 50,
+        "n_trials_ci": 3,
+        "cv_folds": 5,
+        "scoring": "roc_auc"
+      },
+      "calibration": {
+        "enabled": true,
+        "method": "isotonic",
+        "cv": 3
+      },
+      "business_cost": {
+        "cost_fp": 1.0,
+        "cost_fn": 10.0
+      }
+    },
+    "mlflow": {
+      "tracking_uri": "sqlite:///mlflow.db",
+      "experiment_name": "cardiovascular_risk_baseline"
+    },
+    "validation": {
+      "ranges": {
+        "age": {
+          "min": 18,
+          "max": 100
+        },
+        "sex": {
+          "min": 0,
+          "max": 1
+        },
+        "height": {
+          "min": 120,
+          "max": 220
+        },
+        "weight": {
+          "min": 30,
+          "max": 250
+        },
+        "bmi": {
+          "min": 12,
+          "max": 80
+        },
+        "ap_hi": {
+          "min": 70,
+          "max": 240
+        },
+        "ap_lo": {
+          "min": 40,
+          "max": 160
+        },
+        "cholesterol": {
+          "min": 1,
+          "max": 3
+        },
+        "gluc": {
+          "min": 1,
+          "max": 3
+        },
+        "smoke": {
+          "min": 0,
+          "max": 1
+        },
+        "alco": {
+          "min": 0,
+          "max": 1
+        },
+        "active": {
+          "min": 0,
+          "max": 1
+        },
+        "pulse_pressure": {
+          "min": 0,
+          "max": 200
+        },
+        "bp_category": {
+          "min": 0,
+          "max": 4
+        },
+        "bmi_category": {
+          "min": 0,
+          "max": 3
+        },
+        "age_bucket": {
+          "min": 0,
+          "max": 9
+        },
+        "health_risk_score": {
+          "min": 0,
+          "max": 6
+        },
+        "bmi_bp_interaction": {
+          "min": 0,
+          "max": 80
+        }
+      }
+    }
+  },
+  "dataset_shape": [
+    69707,
+    19
+  ],
+  "train_size": 48794,
+  "test_size": 20913,
+  "models_trained": [
+    "LogisticRegression",
+    "LightGBM",
+    "XGBoost"
+  ],
+  "cv_results": {
+    "LogisticRegression": {
+      "cv_accuracy_mean": 0.7308889512932927,
+      "cv_accuracy_std": 0.0026352119943866656,
+      "cv_f1_mean": 0.7115609901180695,
+      "cv_f1_std": 0.003909531349918513,
+      "cv_roc_auc_mean": 0.7954765907354335,
+      "cv_roc_auc_std": 0.003675766186616509
+    },
+    "LightGBM": {
+      "cv_accuracy_mean": 0.7353362164671976,
+      "cv_accuracy_std": 0.002750769022622477,
+      "cv_f1_mean": 0.7254714875879283,
+      "cv_f1_std": 0.0034030913373112675,
+      "cv_roc_auc_mean": 0.8009562806517259,
+      "cv_roc_auc_std": 0.0026852257640917416
+    },
+    "XGBoost": {
+      "cv_accuracy_mean": 0.7286346240564862,
+      "cv_accuracy_std": 0.0025458007165649,
+      "cv_f1_mean": 0.717955116950004,
+      "cv_f1_std": 0.0029230453316953764,
+      "cv_roc_auc_mean": 0.794055825580323,
+      "cv_roc_auc_std": 0.003178284569881078
+    }
+  },
+  "selection_metric": "roc_auc",
+  "tuning_enabled": false,
+  "calibration_method": "isotonic",
+  "best_model_metrics": {
+    "accuracy": 0.7413570506383589,
+    "precision": 0.7614450327000934,
+    "recall": 0.7021826536473291,
+    "f1_score": 0.7306140744060959,
+    "roc_auc": 0.8035908228373297,
+    "brier_score": 0.1794570027730579,
+    "business_cost": {
+      "total_cost": 33408.0,
+      "avg_cost_per_prediction": 1.597475254626309,
+      "false_positives": 2298,
+      "false_negatives": 3111,
+      "cost_fp": 1.0,
+      "cost_fn": 10.0
+    }
+  }
+}

@@ -1,0 +1,30 @@
+# Railway service config for the FastAPI backend.
+# In the Railway dashboard: create a service from this repo with
+# Root Directory = "backend" so it picks up this file and the Dockerfile
+# alongside it.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 100
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Required environment variables (set in the Railway dashboard, not here):
+#   DATABASE_URL   -- reference Railway's managed Postgres plugin variable,
+#                     e.g. ${{Postgres.DATABASE_URL}}
+#   JWT_SECRET_KEY -- a real random secret
+#   API_KEY        -- a real random secret (protects /predict)
+#   GROQ_API_KEY   -- optional, enables the document-upload feature
+#
+# Optional rate limits, in requests per minute for each client address
+# (see src/api/rate_limit.py). Defaults are in brackets:
+#   RATE_LIMIT_AUTH_RPM    -- /auth/login and /auth/register [10]
+#   RATE_LIMIT_EXTRACT_RPM -- /extract, which calls the Groq API [5]
+#   RATE_LIMIT_BATCH_RPM   -- /batch-predict [10]
+#   RATE_LIMIT_PREDICT_RPM -- /predict [60]
+#   RATE_LIMIT_DEFAULT_RPM -- all other routes [120]
+#   RATE_LIMIT_ENABLED     -- "false" turns the limits off [true]
+#   TRUST_PROXY_HEADERS    -- "false" if the API runs without a reverse proxy [true]
