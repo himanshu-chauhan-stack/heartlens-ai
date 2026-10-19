@@ -1,11 +1,13 @@
 from pathlib import Path
 import json
+import os
 import httpx
 import pdfplumber
 root=Path.cwd()
 manifest=json.loads((root/'apps/web/public/samples/manifest.json').read_text())
 results=[]
-with httpx.Client(base_url='http://127.0.0.1:3000',timeout=60) as c:
+base_url=os.environ.get('HEARTLENS_VERIFY_URL','http://127.0.0.1:3000')
+with httpx.Client(base_url=base_url,timeout=60) as c:
     for p in manifest:
         file=root/'apps/web/public/samples'/p['filename']
         with pdfplumber.open(file) as pdf:
@@ -22,5 +24,5 @@ with httpx.Client(base_url='http://127.0.0.1:3000',timeout=60) as c:
         result=prediction.json()
         assert result['source']=='model'
         results.append(dict(file=file.name,extracted_values=extraction['extracted_values'],sample_source=extraction['sample_source'],model_version=result['model_version'],probability=result['probability'],risk_level=result['risk_level']))
-(root/'docs/sample-import-verification.json').write_text(json.dumps(results,indent=2)+'\n')
+(root/('docs/live-sample-import-verification.json' if base_url.startswith('https://') else 'docs/sample-import-verification.json')).write_text(json.dumps(results,indent=2)+'\n')
 print(json.dumps(results,indent=2))

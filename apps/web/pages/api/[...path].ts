@@ -13,7 +13,10 @@ export default async function handler(request: NextApiRequest, response: NextApi
   }
   const base = process.env.HEARTLENS_API_URL || process.env.API_URL;
   if (!base || !process.env.API_KEY) {
-    return response.status(503).json({ detail: "The online service is not connected yet" });
+    return response.status(503).json({
+      code: base ? "api_authentication_unconfigured" : "gateway_unconfigured",
+      detail: "The online service is not connected yet",
+    });
   }
   if (/^\/(auth|reports)(\/|$)/.test(path) && process.env.VERCEL && !process.env.DATABASE_URL) {
     return response.status(503).json({ detail: "Saved accounts await a persistent database connection. Guest predictions remain available." });
@@ -46,12 +49,20 @@ export default async function handler(request: NextApiRequest, response: NextApi
       redirect: "manual",
       signal: AbortSignal.timeout(45000),
     });
+    // Platform startup errors can be HTML/text, never a valid model response.
+    if (upstream.status >= 500 && !upstream.headers.get("content-type")?.includes("application/json")) {
+      return response.status(503).json({ code: "backend_unavailable", detail: "The online service is temporarily unavailable" });
+    }
     for (const name of ["content-type", "content-disposition"]) {
       const value = upstream.headers.get(name);
       if (value) response.setHeader(name, value);
     }
     return response.status(upstream.status).send(Buffer.from(await upstream.arrayBuffer()));
-  } catch {
-    return response.status(503).json({ detail: "The online service is temporarily unavailable" });
+  } catch (error) {
+    const timedOut = error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name);
+    return response.status(503).json({
+      code: timedOut ? "backend_timeout" : "backend_unavailable",
+      detail: timedOut ? "The online service timed out" : "The online service is temporarily unavailable",
+    });
   }
 }

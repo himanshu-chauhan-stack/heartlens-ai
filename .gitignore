@@ -130,3 +130,6 @@ backend/heartlens*.db-*
 work/
 apps/web/.next-static/
 .vercel/
+
+.vercel
+.env*

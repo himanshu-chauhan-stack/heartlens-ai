@@ -1,14 +1,24 @@
 # Deployment modes
 
-GitHub publication and Vercel deployment are authorized. The selected Vercel team is `himchp-2600`. Configuration alone is not evidence that a portal is live.
+Live portal: [HeartLens AI](https://heartlens-ai.vercel.app). Canonical source: [GitHub](https://github.com/himanshu-chauhan-stack/heartlens-ai). The deployed Vercel team is `drmonsares-projects`.
+
+Production deployment `dpl_4mkqcuXwvFx14fFYkaaiVD29HqQ8` is ready on the main alias. Live `/api/health` reports healthy, `model_loaded=true`, and model version `b532dbf82fe5`. Free Neon `heartlens-ai-db` is provisioned and connected to production; its terms were explicitly approved and accepted. Hosted accounts and saved reports passed the [live HTTP integration checks](live-integration-evidence.json).
 
 ## Vercel frontend and private API
 
-The root `vercel.json` uses Vercel Services (beta) to build `apps/web` as Next.js and `backend` as FastAPI. Keep the Vercel project root at the repository root. Only the web service has public ingress. Its server-side API gateway calls the private API through the generated `HEARTLENS_API_URL` binding and injects the service key. Middleware does not use bindings. Operational endpoints and metrics are blocked at the gateway.
+The root `vercel.json` uses Vercel Services (beta) to build `apps/web` as Next.js and `backend` as a containerized FastAPI service through `backend/Dockerfile.vercel`. Keep the Vercel project root at the repository root. Only the web service has public ingress. Its server-side API gateway calls the private API through the generated `HEARTLENS_API_URL` binding and injects the service key. Middleware does not use bindings. Operational endpoints and metrics are blocked at the gateway.
 
 Set `APP_ENV=production`, an independently generated `API_KEY`, and a strong `JWT_SECRET_KEY` (at least 32 characters) as private project environment variables for production/preview. Never expose keys as `NEXT_PUBLIC_*`. Add a persistent PostgreSQL `DATABASE_URL` to enable optional accounts and saved reports. Without one, the gateway returns a clear 503 for those routes before forwarding credentials; genuine guest predictions and marked sample imports do not need a database. Do not use ephemeral serverless SQLite for saved reports. Add `GROQ_API_KEY` privately for general document extraction; marked synthetic sample PDFs do not require it.
 
-Vercel's request-body limit also applies to uploads (4.5 MB at the time of preparation), even though the native backend supports 10 MB. Use smaller PDFs on the hosted portal. Runtime dependencies are in `backend/requirements.txt`; training/development dependencies remain in `requirements.train.txt` and the editable package. The known trained development model and metadata are included. Raw training datasets and SHAP background records are excluded from the public publication snapshot; use the hash-checked `scripts/fetch_upstream_data.py` after reviewing dataset terms to reproduce training. No clinical validation is implied.
+The hosted gateway also limits uploads to 4.5 MB, while the native backend supports 10 MB. Use smaller PDFs on the hosted portal. Runtime dependencies are in `backend/requirements.txt`; training/development dependencies remain in `requirements.train.txt` and the editable package. The known trained development model and metadata are included. Raw training datasets and SHAP background records are excluded from the public publication snapshot; use the hash-checked `scripts/fetch_upstream_data.py` after reviewing dataset terms to reproduce training. No clinical validation is implied.
+
+The API container installs GNU OpenMP (`libgomp1`) for LightGBM and the runtime requirements include PyYAML. A build-time artifact-load preflight fails if the trusted model cannot load in the image; startup then loads the artifact and publishes its identity through health. `INFERENCE_THREADS=1` and `OMP_NUM_THREADS=1` bound online inference. Startup also traverses the fitted model graph, including calibrated fold estimators, to set supported thread parameters once before requests. This does not rewrite the stored artifact or change training parallelism.
+
+### Hosted database and live verification
+
+The approved free Neon database is connected through the private production `DATABASE_URL`. Live HTTP integration passed loaded-model health, genuine prediction, registration/login/current user, server-recomputed save/list/detail, report PDF text/provenance, UTC timestamps and assumptions retention. Cross-user detail/PDF requests returned 404; public operational endpoints returned 403; invalid blood pressure returned 422. These are hosted checks, separate from local SQLite verification.
+
+All four actual synthetic PDFs passed extraction of the exact eleven expected fields followed by genuine prediction using the same artifact; see [live sample evidence](live-sample-import-verification.json). General Groq extraction is still unconfigured and unverified; synthetic local parsing does not require that provider. Never commit database or provider credentials.
 
 ## Local native
 

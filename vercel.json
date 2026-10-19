@@ -8,8 +8,8 @@
     },
     "api": {
       "root": "backend",
-      "framework": "fastapi",
-      "entrypoint": "app:app"
+      "runtime": "container",
+      "entrypoint": "Dockerfile.vercel"
     }
   },
   "rewrites": [{ "source": "/(.*)", "destination": { "service": "web" } }]

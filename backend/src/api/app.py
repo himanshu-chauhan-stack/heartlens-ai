@@ -30,6 +30,7 @@ from .schemas import (
     ModelInfo,
 )
 from sklearn.ensemble import StackingClassifier
+from sklearn.base import BaseEstimator
 
 from ..evaluation.explainer import SHAPExplainer, WeightedContributionExplainer
 from ..features.derived import (
@@ -207,6 +208,58 @@ def _risk_level(probability: float) -> str:
     return "High" if probability > 0.7 else "Medium" if probability > 0.4 else "Low"
 
 
+def _inference_thread_count() -> int:
+    """Keep small online requests bounded, regardless of training parallelism."""
+    try:
+        return max(1, min(8, int(os.getenv("INFERENCE_THREADS", "1"))))
+    except ValueError:
+        return 1
+
+
+def _configure_inference_threads(model_ref, threads: Optional[int] = None) -> int:
+    """Bound the in-memory fitted graph without rewriting the trusted artifact.
+
+    get_params(deep=True) alone misses calibrated fold estimators, fitted
+    ColumnTransformer copies and stacking members. Walk those actual fitted
+    objects too. Do this once before publishing the model to request handlers,
+    never change process-wide native thread limits inside concurrent requests.
+    """
+    threads = _inference_thread_count() if threads is None else max(1, min(8, threads))
+    seen = set()
+    configured = 0
+
+    def visit(value):
+        nonlocal configured
+        if id(value) in seen:
+            return
+        seen.add(id(value))
+        if isinstance(value, dict):
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, (list, tuple)):
+            for child in value:
+                visit(child)
+        elif (
+            isinstance(value, BaseEstimator)
+            or type(value).__module__ == "sklearn.calibration"
+        ):
+            if isinstance(value, BaseEstimator):
+                parameters = value.get_params(deep=False)
+                updates = {
+                    key: threads
+                    for key in ("n_jobs", "nthread", "num_threads")
+                    if key in parameters
+                }
+                if updates:
+                    value.set_params(**updates)
+                    configured += 1
+            for child in vars(value).values():
+                visit(child)
+
+    visit(model_ref)
+    return configured
+
+
 def _model_predict(
     model_ref, features: pd.DataFrame
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -337,7 +390,14 @@ async def load_model():
         if API_KEY is None and APP_ENV not in {"development", "dev", "test"}:
             raise RuntimeError("API_KEY must be set in non-development environments")
         if MODEL_PATH.exists():
-            model = joblib.load(MODEL_PATH)
+            loaded_model = joblib.load(MODEL_PATH)
+            bounded_estimators = _configure_inference_threads(loaded_model)
+            model = loaded_model
+            logger.info(
+                "Inference parallelism bounded to %s threads across %s estimator objects",
+                _inference_thread_count(),
+                bounded_estimators,
+            )
             model_metadata["loaded"] = True
             model_metadata["artifact_sha256"] = hashlib.sha256(
                 MODEL_PATH.read_bytes()

@@ -12,3 +12,5 @@ logs/*
 !logs/.gitkeep
 models/artifacts/*
 !models/artifacts/.gitkeep
+!models/artifacts/best_model.pkl
+!models/artifacts/training_metadata.json

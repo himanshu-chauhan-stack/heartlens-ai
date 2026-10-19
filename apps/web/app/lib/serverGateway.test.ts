@@ -53,4 +53,24 @@ describe("server-only deployment gateway", () => {
     const res = response(); await handler(request(["health"]), res);
     expect(res.statusCode).toBe(503);
   });
+  it("does not forward input when its private binding is missing", async () => {
+    vi.stubEnv("HEARTLENS_API_URL", ""); vi.stubEnv("API_URL", "");
+    const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
+    const res = response(); await handler(request(["predict"], "POST", "{}"), res);
+    expect(res.statusCode).toBe(503);
+    expect(res.body).toEqual({ code: "gateway_unconfigured", detail: "The online service is not connected yet" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("replaces platform startup HTML with a safe recovery response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<html>FUNCTION_INVOCATION_FAILED</html>", { status: 500, headers: { "content-type": "text/html" } })));
+    const res = response(); await handler(request(["health"]), res);
+    expect(res.statusCode).toBe(503);
+    expect(res.body).toEqual({ code: "backend_unavailable", detail: "The online service is temporarily unavailable" });
+  });
+  it("distinguishes a timeout from a missing model", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new DOMException("timeout", "TimeoutError")));
+    const res = response(); await handler(request(["predict"], "POST", "{}"), res);
+    expect(res.statusCode).toBe(503);
+    expect(res.body).toEqual({ code: "backend_timeout", detail: "The online service timed out" });
+  });
 });

@@ -257,6 +257,41 @@ describe("prediction request failures and consent", () => {
       );
     },
   );
+  it.each([
+    [{ detail: "Model is not loaded" }, /trained model is not loaded/],
+    [{ code: "model_not_loaded" }, /trained model is not loaded/],
+    [{ detail: { code: "model_unavailable" } }, /trained model is not loaded/],
+    [{ detail: "The online service is not connected yet" }, /service is not connected/],
+    [{ code: "gateway_unconfigured" }, /service is not connected/],
+    [{ detail: "API authentication is not configured" }, /configuration repair/],
+    [{ code: "api_authentication_unconfigured" }, /configuration repair/],
+    [{ detail: "The online service is temporarily unavailable" }, /temporarily unreachable or busy/],
+    [{ code: "backend_unavailable" }, /temporarily unreachable or busy/],
+    [{ code: "backend_timeout" }, /took too long/],
+  ])("distinguishes recoverable 503 cause %j", async (body, message) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false, status: 503, json: async () => body,
+    }));
+    await expect(fetchBackendPrediction(full())).rejects.toThrow(message);
+    await expect(fetchBackendPrediction(full())).rejects.toThrow(/inputs are preserved/);
+  });
+  it.each([null, [], "<html>SECRET_INTERNAL_DETAIL</html>", { detail: "SECRET_INTERNAL_DETAIL" }, { detail: { code: "SECRET_INTERNAL_DETAIL" } }])(
+    "does not expose unrecognized error bodies %j", async (body) => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ok: false, status: 503, json: async () => body}));
+      await expect(fetchBackendPrediction(full())).rejects.toThrow(/temporarily unreachable or busy/);
+      await expect(fetchBackendPrediction(full())).rejects.not.toThrow(/SECRET_INTERNAL_DETAIL|trained model/);
+    },
+  );
+  it("handles an HTML or empty gateway failure without misreporting a missing model", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ok: false, status: 503, json: async () => {throw new SyntaxError("SECRET_INTERNAL_DETAIL");}}));
+    await expect(fetchBackendPrediction(full())).rejects.toThrow(/temporarily unreachable or busy/);
+  });
+  it.each([[502, /temporarily unreachable or busy/], [504, /took too long/]])(
+    "offers recovery for gateway HTTP %s", async (status, message) => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ok: false, status, json: async () => ({})}));
+      await expect(fetchBackendPrediction(full())).rejects.toThrow(message);
+    },
+  );
   it("rejects malformed JSON and invalid model responses", async () => {
     vi.stubGlobal(
       "fetch",

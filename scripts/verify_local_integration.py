@@ -1,10 +1,11 @@
 from pathlib import Path
 from uuid import uuid4
-import io,json,httpx,pdfplumber
+import io,json,os,httpx,pdfplumber
 root=Path.cwd()
 inputs=json.loads((root/'apps/web/public/samples/manifest.json').read_text())[1]['inputs']
 headers={}
-with httpx.Client(base_url='http://127.0.0.1:3000',timeout=30) as c:
+base_url=os.environ.get('HEARTLENS_VERIFY_URL','http://127.0.0.1:3000')
+with httpx.Client(base_url=base_url,timeout=60) as c:
     health=c.get('/api/health');assert health.status_code==200 and health.json()['model_loaded']
     prediction=c.post('/api/predict',json=inputs);assert prediction.status_code==200
     actual=prediction.json()
@@ -39,5 +40,6 @@ with httpx.Client(base_url='http://127.0.0.1:3000',timeout=30) as c:
     assert c.get('/api/metrics').status_code==403
     assert c.post('/api/predict',json={**inputs,'ap_hi':80,'ap_lo':90}).status_code==422
     result={'health_model_loaded':True,'prediction_status':200,'artifact_version':actual['model_version'],'register_login_me':True,'save_list_detail':True,'recomputed_probability_matches':True,'assumptions_preserved':True,'utc_timestamps':True,'pdf_valid_text_and_provenance':True,'ownership_detail_pdf_404':True,'public_reload_and_metrics_403':True,'invalid_bp_422':True}
-(root/'docs/local-integration-evidence.json').write_text(json.dumps(result,indent=2)+'\n')
+result['base_url']=base_url
+(root/('docs/live-integration-evidence.json' if base_url.startswith('https://') else 'docs/local-integration-evidence.json')).write_text(json.dumps(result,indent=2)+'\n')
 print(json.dumps(result,indent=2))

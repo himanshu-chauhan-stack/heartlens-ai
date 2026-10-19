@@ -4,7 +4,11 @@ A responsive educational cardiovascular profile application with genuine Python 
 
 **Made with Love Himanshu Chauhan**
 
-Deployment target: Vercel team `himchp-2600`, with the Next.js frontend and a private FastAPI service in one deployment. The Vercel Services feature is in beta. The root `vercel.json` defines both services; do not select only `apps/web` as the project root. See [deployment setup](docs/DEPLOYMENT.md) for required private environment variables and database setup. GitHub Pages remains an optional manual frontend-only workflow.
+[Live HeartLens AI](https://heartlens-ai.vercel.app) · [Canonical GitHub repository](https://github.com/himanshu-chauhan-stack/heartlens-ai)
+
+The application is live on Vercel under `drmonsares-projects`, with the Next.js frontend and a private containerized FastAPI service in one deployment. Live `/api/health` reports healthy with `model_loaded=true` and artifact version `b532dbf82fe5`. The free Neon `heartlens-ai-db` database is provisioned and connected in production after approved terms acceptance. Hosted registration/login, server-recomputed report saves, history/detail and PDF retrieval passed the [live integration checks](docs/live-integration-evidence.json). Guest inference does not require the database.
+
+The root `vercel.json` defines both Vercel Services (beta); keep the project root at the repository root. The API uses `backend/Dockerfile.vercel`, with `libgomp1`, the PyYAML runtime dependency, an artifact-load build preflight and bounded single-thread fitted inference. See [deployment setup](docs/DEPLOYMENT.md) for the architecture, private environment variables and remaining database steps. GitHub Pages remains an optional manual frontend-only workflow.
 
 **Interface redesign and adaptation by Himanshu Chauhan.** Adapted from [the upstream cardiovascular-risk application](https://github.com/shlokkvaishnav/cardiovascular-risk), baseline `1308460473b9f67eeb8fe5513c1540cbad393a8f`. The original [MIT license](LICENSE) and copyright notice are preserved.
 
@@ -140,4 +144,4 @@ Production dependencies currently audit clean; development lint tooling retains 
 - [Viva and reproducible demo](docs/VIVA.md)
 - [Model card](backend/MODEL_CARD.md)
 
-No application code has been pushed or deployed. Faculty and group details remain configurable; none are invented.
+The live deployment and canonical repository are linked above. Hosted accounts and report saves passed live HTTP integration against the connected Neon database. All four actual synthetic PDFs also passed exact-field extraction and genuine prediction with the same artifact; see [live sample evidence](docs/live-sample-import-verification.json). General Groq report extraction remains unconfigured and unverified. Faculty and group details remain configurable; none are invented.

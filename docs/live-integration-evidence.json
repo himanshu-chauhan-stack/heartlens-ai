@@ -1,0 +1,15 @@
+{
+  "health_model_loaded": true,
+  "prediction_status": 200,
+  "artifact_version": "b532dbf82fe5",
+  "register_login_me": true,
+  "save_list_detail": true,
+  "recomputed_probability_matches": true,
+  "assumptions_preserved": true,
+  "utc_timestamps": true,
+  "pdf_valid_text_and_provenance": true,
+  "ownership_detail_pdf_404": true,
+  "public_reload_and_metrics_403": true,
+  "invalid_bp_422": true,
+  "base_url": "https://heartlens-ai.vercel.app"
+}

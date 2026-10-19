@@ -41,6 +41,45 @@ export type MappedPrediction = {
   defaultedFields: string[];
 };
 export class PredictionApiError extends Error {}
+
+// Only recognized service identifiers select copy. Never render arbitrary
+// upstream detail: a proxy may return HTML, infrastructure details or secrets.
+async function predictionFailureMessage(res: Response): Promise<string> {
+  if (res.status !== 503 && res.status !== 502 && res.status !== 504)
+    return `Prediction request failed (${res.status}). Your inputs are preserved.`;
+  let code: unknown;
+  let detail: unknown;
+  try {
+    const body: unknown = await res.json();
+    if (body && typeof body === "object" && !Array.isArray(body)) {
+      const error = body as Record<string, unknown>;
+      code = error.code;
+      detail = error.detail;
+      if (detail && typeof detail === "object" && !Array.isArray(detail))
+        code ??= (detail as Record<string, unknown>).code;
+    }
+  } catch {
+    // HTML, empty and malformed error responses use recoverable generic copy.
+  }
+  if (
+    code === "model_not_loaded" || code === "model_unavailable" ||
+    detail === "Model is not loaded"
+  )
+    return "The trained model is not loaded yet. Please retry shortly. Your inputs are preserved.";
+  if (
+    code === "gateway_unconfigured" || code === "service_not_connected" ||
+    detail === "The online service is not connected yet"
+  )
+    return "The prediction service is not connected yet. Please try again once the service connection is restored. Your inputs are preserved.";
+  if (
+    code === "api_authentication_unconfigured" ||
+    detail === "API authentication is not configured"
+  )
+    return "The prediction service needs a configuration repair. Please try again after the service is restored. Your inputs are preserved.";
+  if (code === "backend_timeout" || res.status === 504)
+    return "The prediction service took too long to respond. Please retry. Your inputs are preserved.";
+  return "The prediction service is temporarily unreachable or busy. Please retry shortly. Your inputs are preserved.";
+}
 export function validateAssessment(data: AssessmentData): string[] {
   const errors: string[] = [];
   if (
@@ -320,11 +359,7 @@ export async function fetchBackendPrediction(
       signal: controller.signal,
     });
     if (!res.ok)
-      throw new PredictionApiError(
-        res.status === 503
-          ? "The trained model is unavailable. Please retry when the service is ready."
-          : `Prediction request failed (${res.status}). Your inputs are preserved.`,
-      );
+      throw new PredictionApiError(await predictionFailureMessage(res));
     const response: unknown = await res.json();
     if (!validatePredictionResponse(response))
       throw new PredictionApiError(

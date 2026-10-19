@@ -49,3 +49,16 @@ Docker is unavailable, so Compose runtime is unverified. Lighthouse, Web Vitals,
 - Backend: 31 targeted sample-extraction, account/report and model-contract tests passed after the PDF credit and serverless startup changes. These are not additional independent cases to sum with previous full-suite totals.
 - Added a server-only Vercel service gateway. Tests cover operational-route denial, missing-database account rejection before credential forwarding, private-key replacement, genuine-response forwarding and unreachable backend behavior.
 - Vercel account identity matches `himchp-2600`, but the connector returned 403 for the intended team scope. Remote serverless inference and persistent database behavior remain unverified until deployment succeeds.
+
+## Live repair verification — 19 October 2026
+
+This section supersedes the earlier deployment limitations above. Production is https://heartlens-ai.vercel.app on `drmonsares-projects/heartlens-ai`; deployment `dpl_4mkqcuXwvFx14fFYkaaiVD29HqQ8` is ready. The private FastAPI container installs libgomp1 and PyYAML and loads the bundled artifact during its build. The inference graph now bounds fitted fold and preprocessing workers without changing artifact bytes or predictions. Local requests previously exceeding the frontend timeout now completed in 0.18–0.54 seconds in the observed three-request run.
+
+- Backend full suite: 126 passed, 1 skipped; subsequent portable inference regression suite: 9 passed. Counts overlap and are not additive.
+- Frontend: 120 tests in 8 files passed; lint, TypeScript and remote production build passed.
+- Production health: healthy, model_loaded=true, version b532dbf82fe5.
+- All four real synthetic PDF files passed exact-field extraction and genuine prediction through the live gateway: [live sample evidence](live-sample-import-verification.json).
+- Free Neon PostgreSQL was provisioned and connected with authentication enabled, after explicit approval of provisioning and marketplace terms. [Live integration evidence](live-integration-evidence.json) confirms registration, login, current-user lookup, recomputed save, list/detail, PDF content/provenance, UTC timestamps, preserved assumptions, cross-user 404, public operational endpoints 403 and invalid blood pressure 422.
+- Only fictional educational profiles and disposable synthetic test accounts were used. No patient records were tested.
+
+General third-party report extraction still needs a private GROQ_API_KEY and has not been verified live. Docker Compose remains unverified locally; the Vercel container was built and run remotely. These checks establish application behavior, not clinical validity or guaranteed uptime. The canonical public GitHub repository is https://github.com/himanshu-chauhan-stack/heartlens-ai; the deployment was uploaded directly with the official CLI rather than relying on the older private import copy.
